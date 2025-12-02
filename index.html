@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RuRevivals Market</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary: #475569;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-light);
+            font-weight: 400;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 24px;
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 4px;
+            box-shadow: var(--shadow);
+        }
+
+        .tab {
+            padding: 12px;
+            background: none;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .tab:hover {
+            background: var(--background);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+
+        /* Content */
+        .content {
+            display: none;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat {
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid var(--border);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-rarity {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .rarity-rare { background: #dbeafe; color: #1e40af; }
+        .rarity-superrare { background: #f3e8ff; color: #6b21a8; }
+        .rarity-epic { background: #fef3c7; color: #92400e; }
+        .rarity-legendary { background: #fee2e2; color: #991b1b; }
+
+        .card-id {
+            float: right;
+            font-size: 12px;
+            color: var(--text-light);
+            font-family: monospace;
+        }
+
+        .card-body {
+            padding: 16px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        .card-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .price {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .seller {
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--background);
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        .btn-block {
+            width: 100%;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .form-select,
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--surface);
+            transition: border-color 0.2s;
+        }
+
+        .form-select:focus,
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .empty-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            background: var(--background);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+        }
+
+        .empty-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            font-size: 14px;
+            color: var(--text-light);
+            max-width: 300px;
+            margin: 0 auto 20px;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 48px 24px;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalIn 0.2s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 16px 20px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: none;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: var(--shadow-lg);
+            max-width: 400px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+            border-left: 4px solid var(--primary);
+        }
+
+        .notification.success {
+            border-left-color: var(--success);
+        }
+
+        .notification.error {
+            border-left-color: var(--error);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .notification-message {
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        /* Icons */
+        .icon {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .icon-small {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Utility */
+        .hidden { display: none !important; }
+        .text-center { text-align: center; }
+        .mt-1 { margin-top: 4px; }
+        .mt-2 { margin-top: 8px; }
+        .mt-3 { margin-top: 16px; }
+        .mt-4 { margin-top: 24px; }
+        .mb-1 { margin-bottom: 4px; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-3 { margin-bottom: 16px; }
+        .mb-4 { margin-bottom: 24px; }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                margin: 0;
+            }
+            
+            .notification {
+                left: 20px;
+                right: 20px;
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="title">RuRevivals Market</h1>
+            <p class="subtitle">Торговая площадка</p>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="totalListings">0</div>
+                <div class="stat-label">Объявлений</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="userBalance">0</div>
+                <div class="stat-label">Ваш баланс</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="market">
+                <span>Рынок</span>
+            </button>
+            <button class="tab" data-tab="collection">
+                <span>Коллекция</span>
+            </button>
+            <button class="tab" data-tab="sell">
+                <span>Продать</span>
+            </button>
+            <button class="tab" data-tab="my-lots">
+                <span>Мои лоты</span>
+            </button>
+        </nav>
+
+        <!-- Market Tab -->
+        <div id="market" class="content active">
+            <div class="loading" id="marketLoading">
+                <div class="spinner"></div>
+                <p class="loading-text">Загрузка предложений</p>
+            </div>
+            
+            <div class="cards-grid hidden" id="marketListings"></div>
+            
+            <div class="empty-state hidden" id="marketEmpty">
+                <div class="empty-icon">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </div>
+                <h3 class="empty-title">Нет предложений</h3>
+                <p class="empty-text">Пока нет карточек на продаже</p>
+                <button class="btn btn-primary mt-3" onclick="showTab('sell')">
+                    Продать карточку
+                </button>
+            </div>
+        </div>
+
+        <!-- Collection Tab -->
+        <div id="collection" class="content">
+            <div class="loading" id="collectionLoading">
+                <div class="spinner"></div>
+                <p class="loading-text">Загрузка коллекции</p>
+            </div>
+            
+            <div class="cards-grid hidden" id="collectionList"></div>
+            
+            <div class="empty-state hidden" id="collectionEmpty">
+                <div class="empty-icon">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                </div>
+                <h3 class="empty-title">Коллекция пуста</h3>
+                <p class="empty-text">У вас пока нет карточек</p>
+                <button class="btn btn-primary mt-3" onclick="tg.close()">
+                    Получить карточку
+                </button>
+            </div>
+        </div>
+
+        <!-- Sell Tab -->
+        <div id="sell" class="content">
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                </div>
+                <h3 class="empty-title">Продажа карточки</h3>
+                <p class="empty-text">Выберите карточку и укажите цену</p>
+                
+                <div class="mt-4">
+                    <div class="form-group">
+                        <label class="form-label">Карточка</label>
+                        <select class="form-select" id="sellCardSelect">
+                            <option value="">Загрузка...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Цена</label>
+                        <input type="number" class="form-input" id="sellPrice" 
+                               placeholder="Цена в коинах" min="10" max="10000">
+                        <p class="form-help">От 10 до 10000 коинов</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="stat">
+                            <div class="stat-label">Вы получите</div>
+                            <div class="stat-value" id="receivesAmount">0</div>
+                            <div class="stat-label">(комиссия 5%)</div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-block" onclick="sellCard()" id="sellBtn">
+                        Выставить на продажу
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Lots Tab -->
+        <div id="my-lots" class="content">
+            <div class="loading" id="lotsLoading">
+                <div class="spinner"></div>
+                <p class="loading-text">Загрузка лотов</p>
+            </div>
+            
+            <div class="cards-grid hidden" id="myLotsList"></div>
+            
+            <div class="empty-state hidden" id="lotsEmpty">
+                <div class="empty-icon">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                </div>
+                <h3 class="empty-title">Нет активных лотов</h3>
+                <p class="empty-text">У вас нет карточек на продаже</p>
+                <button class="btn btn-primary mt-3" onclick="showTab('sell')">
+                    Продать карточку
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="buyModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-header">
+                <h3 class="modal-title">Подтверждение покупки</h3>
+            </div>
+            <div class="modal-body">
+                <div id="buyModalContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                <button class="btn btn-primary" onclick="confirmBuy()">Купить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="cancelModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-header">
+                <h3 class="modal-title">Отмена продажи</h3>
+            </div>
+            <div class="modal-body">
+                <p class="card-text">Вы уверены, что хотите отменить продажу этой карточки?</p>
+                <p class="card-text mt-2">Карточка будет возвращена в вашу коллекцию.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Оставить</button>
+                <button class="btn btn-danger" onclick="confirmCancel()">Отменить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        // State
+        const state = {
+            userId: tg.initDataUnsafe?.user?.id || tg.initDataUnsafe?.start_param,
+            market: [],
+            cards: [],
+            listings: [],
+            balance: 0,
+            currentListing: null
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!state.userId) {
+                showNotification('Ошибка авторизации', 'error');
+                return;
+            }
+
+            setupTabs();
+            loadData();
+            
+            // Update price calculation
+            document.getElementById('sellPrice')?.addEventListener('input', updatePrice);
+        });
+
+        // Tabs
+        function setupTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.dataset.tab;
+                    showTab(tabId);
+                });
+            });
+        }
+
+        function showTab(tabId) {
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tabId);
+            });
+
+            // Show content
+            document.querySelectorAll('.content').forEach(c => {
+                c.classList.toggle('active', c.id === tabId);
+                c.classList.toggle('hidden', c.id !== tabId);
+            });
+        }
+
+        // Data Loading
+        async function loadData() {
+            try {
+                const data = await sendToBot('get_data');
+                if (data.success) {
+                    state.market = data.market || [];
+                    state.cards = data.cards || [];
+                    state.listings = data.listings || [];
+                    state.balance = data.balance || 0;
+                    
+                    updateUI();
+                }
+            } catch (error) {
+                showNotification('Ошибка загрузки данных', 'error');
+            }
+        }
+
+        function updateUI() {
+            // Update stats
+            document.getElementById('totalListings').textContent = state.market.length;
+            document.getElementById('userBalance').textContent = formatNumber(state.balance);
+            
+            // Render content
+            renderMarket();
+            renderCollection();
+            renderSellForm();
+            renderListings();
+            
+            // Hide loadings
+            document.querySelectorAll('.loading').forEach(el => el.classList.add('hidden'));
+        }
+
+        function renderMarket() {
+            const container = document.getElementById('marketListings');
+            const empty = document.getElementById('marketEmpty');
+            
+            if (!state.market.length) {
+                empty.classList.remove('hidden');
+                container.classList.add('hidden');
+                return;
+            }
+            
+            empty.classList.add('hidden');
+            container.classList.remove('hidden');
+            container.innerHTML = '';
+            
+            state.market.forEach(item => {
+                const card = getCardInfo(item.card_id);
+                const isOwn = item.user_id === state.userId;
+                
+                container.innerHTML += `
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-rarity rarity-${getRarityClass(card.rarity)}">
+                                ${card.rarity}
+                            </span>
+                            <span class="card-id">#${item.id}</span>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="card-title">${card.name}</h3>
+                            <p class="card-text">${card.fact}</p>
+                        </div>
+                        <div class="card-footer">
+                            <div>
+                                <div class="price">${formatNumber(item.price)} ₽</div>
+                                <div class="seller">${item.username || 'Аноним'}</div>
+                            </div>
+                            <button class="btn btn-primary btn-sm" onclick="buyCard(${item.id})" ${isOwn ? 'disabled' : ''}>
+                                ${isOwn ? 'Ваш' : 'Купить'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderCollection() {
+            const container = document.getElementById('collectionList');
+            const empty = document.getElementById('collectionEmpty');
+            
+            if (!state.cards.length) {
+                empty.classList.remove('hidden');
+                container.classList.add('hidden');
+                return;
+            }
+            
+            empty.classList.add('hidden');
+            container.classList.remove('hidden');
+            container.innerHTML = '';
+            
+            state.cards.forEach(card => {
+                if (card.count > 0) {
+                    container.innerHTML += `
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-rarity rarity-${getRarityClass(card.rarity)}">
+                                    ${card.rarity}
+                                </span>
+                                <span class="card-id">#${card.id}</span>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="card-title">${card.name}</h3>
+                                <p class="card-text">${card.fact}</p>
+                            </div>
+                            <div class="card-footer">
+                                <div class="price">${card.count} шт.</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function renderSellForm() {
+            const select = document.getElementById('sellCardSelect');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Выберите карточку</option>';
+            
+            state.cards.forEach(card => {
+                if (card.count > 0) {
+                    const option = document.createElement('option');
+                    option.value = card.id;
+                    option.textContent = `${card.name} (${card.count} шт.)`;
+                    select.appendChild(option);
+                }
+            });
+            
+            updatePrice();
+        }
+
+        function renderListings() {
+            const container = document.getElementById('myLotsList');
+            const empty = document.getElementById('lotsEmpty');
+            
+            if (!state.listings.length) {
+                empty.classList.remove('hidden');
+                container.classList.add('hidden');
+                return;
+            }
+            
+            empty.classList.add('hidden');
+            container.classList.remove('hidden');
+            container.innerHTML = '';
+            
+            state.listings.forEach(item => {
+                const card = getCardInfo(item.card_id);
+                
+                container.innerHTML += `
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-rarity rarity-${getRarityClass(card.rarity)}">
+                                ${card.rarity}
+                            </span>
+                            <span class="card-id">#${item.id}</span>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="card-title">${card.name}</h3>
+                            <p class="card-text">${card.fact}</p>
+                        </div>
+                        <div class="card-footer">
+                            <div class="price">${formatNumber(item.price)} ₽</div>
+                            <button class="btn btn-danger btn-sm" onclick="cancelListing(${item.id})">
+                                Отменить
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Actions
+        function buyCard(listingId) {
+            const item = state.market.find(l => l.id === listingId);
+            if (!item) return;
+            
+            const card = getCardInfo(item.card_id);
+            state.currentListing = listingId;
+            
+            document.getElementById('buyModalContent').innerHTML = `
+                <p class="card-text mb-2">Вы покупаете карточку:</p>
+                <h3 class="card-title mb-3">${card.name}</h3>
+                <p class="card-text mb-1">Цена: <strong>${formatNumber(item.price)} ₽</strong></p>
+                <p class="card-text">Продавец: ${item.username || 'Аноним'}</p>
+            `;
+            
+            document.getElementById('buyModal').classList.add('active');
+        }
+
+        function cancelListing(listingId) {
+            state.currentListing = listingId;
+            document.getElementById('cancelModal').classList.add('active');
+        }
+
+        async function confirmBuy() {
+            try {
+                const result = await sendToBot('buy', { listing_id: state.currentListing });
+                
+                if (result.success) {
+                    showNotification('Покупка успешна', 'success');
+                    closeModal();
+                    await loadData();
+                    showTab('collection');
+                } else {
+                    showNotification(result.reason || 'Ошибка покупки', 'error');
+                    closeModal();
+                }
+            } catch (error) {
+                showNotification('Ошибка сети', 'error');
+                closeModal();
+            }
+        }
+
+        async function confirmCancel() {
+            try {
+                const result = await sendToBot('cancel', { listing_id: state.currentListing });
+                
+                if (result.success) {
+                    showNotification('Продажа отменена', 'success');
+                    closeModal();
+                    await loadData();
+                    showTab('collection');
+                } else {
+                    showNotification(result.reason || 'Ошибка отмены', 'error');
+                    closeModal();
+                }
+            } catch (error) {
+                showNotification('Ошибка сети', 'error');
+                closeModal();
+            }
+        }
+
+        async function sellCard() {
+            const cardId = document.getElementById('sellCardSelect').value;
+            const price = document.getElementById('sellPrice').value;
+            const btn = document.getElementById('sellBtn');
+            
+            if (!cardId) {
+                showNotification('Выберите карточку', 'error');
+                return;
+            }
+            
+            if (!price || price < 10 || price > 10000) {
+                showNotification('Некорректная цена', 'error');
+                return;
+            }
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Отправка...';
+                
+                const result = await sendToBot('sell', {
+                    card_id: parseInt(cardId),
+                    price: parseInt(price)
+                });
+                
+                if (result.success) {
+                    showNotification('Карточка выставлена на продажу', 'success');
+                    
+                    // Reset form
+                    document.getElementById('sellCardSelect').value = '';
+                    document.getElementById('sellPrice').value = '';
+                    updatePrice();
+                    
+                    // Reload data
+                    await loadData();
+                    showTab('my-lots');
+                } else {
+                    showNotification(result.reason || 'Ошибка продажи', 'error');
+                }
+            } catch (error) {
+                showNotification('Ошибка сети', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Выставить на продажу';
+            }
+        }
+
+        function closeModal() {
+            document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+            state.currentListing = null;
+        }
+
+        // Utilities
+        function updatePrice() {
+            const price = parseInt(document.getElementById('sellPrice')?.value) || 0;
+            const receives = Math.floor(price * 0.95);
+            const element = document.getElementById('receivesAmount');
+            if (element) element.textContent = formatNumber(receives);
+        }
+
+        async function sendToBot(action, data = {}) {
+            return new Promise((resolve, reject) => {
+                const request = {
+                    action: action,
+                    user_id: state.userId,
+                    ...data
+                };
+                
+                tg.sendData(JSON.stringify(request));
+                
+                tg.onEvent('webAppDataReceived', function handler(e) {
+                    try {
+                        const response = JSON.parse(e.data);
+                        tg.offEvent('webAppDataReceived', handler);
+                        resolve(response);
+                    } catch (error) {
+                        tg.offEvent('webAppDataReceived', handler);
+                        reject(error);
+                    }
+                });
+                
+                setTimeout(() => {
+                    tg.offEvent('webAppDataReceived');
+                    reject(new Error('Таймаут'));
+                }, 10000);
+            });
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <div class="notification-message">${message}</div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function getCardInfo(cardId) {
+            // This should be replaced with real data from bot
+            const cards = {
+                1: { name: "Етерниум пиздабол №1", rarity: "Редкая", fact: "Он пиздит, что живёт в Одессе." },
+                2: { name: "Етерниум пиздабол №2", rarity: "Сверхредкая", fact: "Пиздит, что у него 6 биткоинов." },
+                3: { name: "Етерниум пиздабол №3", rarity: "Эпическая", fact: "Пиздит, что он самый ахуенный человек на планете." },
+                4: { name: "Етерниум пиздабол №4", rarity: "Легендарная", fact: "Пиздит, что он фембой и все ему завидуют." }
+            };
+            
+            return cards[cardId] || { name: "Неизвестно", rarity: "Редкая", fact: "Информация отсутствует" };
+        }
+
+        function getRarityClass(rarity) {
+            const map = {
+                'Редкая': 'rare',
+                'Сверхредкая': 'superrare',
+                'Эпическая': 'epic',
+                'Легендарная': 'legendary'
+            };
+            return map[rarity] || 'rare';
+        }
+
+        function formatNumber(num) {
+            return new Intl.NumberFormat('ru-RU').format(num);
+        }
+
+        // Close modals on outside click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

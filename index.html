@@ -605,7 +605,7 @@
                 </div>
                 <h3 class="empty-title">Коллекция пуста</h3>
                 <p class="empty-text">У вас пока нет карточек</p>
-                <button class="btn btn-primary mt-3" onclick="tg.close()">
+                <button class="btn btn-primary mt-3" onclick="openBot()">
                     Получить карточку
                 </button>
             </div>
@@ -613,7 +613,12 @@
 
         <!-- Sell Tab -->
         <div id="sell" class="content">
-            <div class="empty-state">
+            <div class="loading" id="sellLoading">
+                <div class="spinner"></div>
+                <p class="loading-text">Загрузка данных</p>
+            </div>
+            
+            <div class="empty-state hidden" id="sellForm">
                 <div class="empty-icon">
                     <svg class="icon" viewBox="0 0 24 24">
                         <circle cx="12" cy="12" r="10"/>
@@ -628,7 +633,7 @@
                     <div class="form-group">
                         <label class="form-label">Карточка</label>
                         <select class="form-select" id="sellCardSelect">
-                            <option value="">Загрузка...</option>
+                            <option value="">Выберите карточку...</option>
                         </select>
                     </div>
                     
@@ -716,11 +721,14 @@
     <script>
         // Telegram Web App
         const tg = window.Telegram.WebApp;
+        
+        // Инициализируем веб-приложение
+        tg.ready();
         tg.expand();
         
         // State
         const state = {
-            userId: tg.initDataUnsafe?.user?.id || tg.initDataUnsafe?.start_param,
+            userId: null,
             market: [],
             cards: [],
             listings: [],
@@ -729,17 +737,39 @@
         };
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!state.userId) {
-                showNotification('Ошибка авторизации', 'error');
-                return;
-            }
-
-            setupTabs();
-            loadData();
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log("DOM загружен, инициализация...");
             
-            // Update price calculation
-            document.getElementById('sellPrice')?.addEventListener('input', updatePrice);
+            // Получаем user_id из initData
+            try {
+                const initData = tg.initDataUnsafe || {};
+                state.userId = initData.user?.id;
+                
+                console.log("Init data:", initData);
+                console.log("User ID:", state.userId);
+                
+                if (!state.userId) {
+                    // Пробуем получить из start_param
+                    state.userId = tg.initDataUnsafe?.start_param;
+                    console.log("User ID from start_param:", state.userId);
+                }
+                
+                if (!state.userId) {
+                    showNotification('Ошибка авторизации. Перезапустите приложение через бота.', 'error');
+                    document.querySelectorAll('.loading').forEach(el => el.classList.add('hidden'));
+                    return;
+                }
+                
+                setupTabs();
+                await loadData();
+                
+                // Update price calculation
+                document.getElementById('sellPrice')?.addEventListener('input', updatePrice);
+                
+            } catch (error) {
+                console.error("Ошибка инициализации:", error);
+                showNotification('Ошибка инициализации: ' + error.message, 'error');
+            }
         });
 
         // Tabs
@@ -753,6 +783,8 @@
         }
 
         function showTab(tabId) {
+            console.log("Переключение на вкладку:", tabId);
+            
             // Update tabs
             document.querySelectorAll('.tab').forEach(t => {
                 t.classList.toggle('active', t.dataset.tab === tabId);
@@ -763,12 +795,26 @@
                 c.classList.toggle('active', c.id === tabId);
                 c.classList.toggle('hidden', c.id !== tabId);
             });
+            
+            // При переключении на вкладку продажи обновляем список карточек
+            if (tabId === 'sell') {
+                renderSellForm();
+            }
+        }
+
+        function openBot() {
+            // Закрываем веб-приложение и открываем бота
+            tg.close();
         }
 
         // Data Loading
         async function loadData() {
+            console.log("Загрузка данных...");
+            
             try {
                 const data = await sendToBot('get_data');
+                console.log("Получены данные от бота:", data);
+                
                 if (data.success) {
                     state.market = data.market || [];
                     state.cards = data.cards || [];
@@ -776,13 +822,20 @@
                     state.balance = data.balance || 0;
                     
                     updateUI();
+                } else {
+                    showNotification('Ошибка загрузки: ' + (data.reason || 'Неизвестная ошибка'), 'error');
+                    document.querySelectorAll('.loading').forEach(el => el.classList.add('hidden'));
                 }
             } catch (error) {
-                showNotification('Ошибка загрузки данных', 'error');
+                console.error("Ошибка загрузки данных:", error);
+                showNotification('Ошибка загрузки данных: ' + error.message, 'error');
+                document.querySelectorAll('.loading').forEach(el => el.classList.add('hidden'));
             }
         }
 
         function updateUI() {
+            console.log("Обновление UI...");
+            
             // Update stats
             document.getElementById('totalListings').textContent = state.market.length;
             document.getElementById('userBalance').textContent = formatNumber(state.balance);
@@ -794,69 +847,96 @@
             renderListings();
             
             // Hide loadings
-            document.querySelectorAll('.loading').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.loading').forEach(el => {
+                if (!el.id.includes('Loading')) {
+                    el.classList.add('hidden');
+                }
+            });
+            
+            console.log("UI обновлен");
         }
 
         function renderMarket() {
+            console.log("Рендеринг рынка...");
             const container = document.getElementById('marketListings');
+            const loading = document.getElementById('marketLoading');
             const empty = document.getElementById('marketEmpty');
             
-            if (!state.market.length) {
-                empty.classList.remove('hidden');
-                container.classList.add('hidden');
+            // Скрываем спиннер
+            if (loading) loading.classList.add('hidden');
+            
+            if (!state.market || state.market.length === 0) {
+                if (empty) empty.classList.remove('hidden');
+                if (container) container.classList.add('hidden');
                 return;
             }
             
-            empty.classList.add('hidden');
-            container.classList.remove('hidden');
-            container.innerHTML = '';
-            
-            state.market.forEach(item => {
-                const card = getCardInfo(item.card_id);
-                const isOwn = item.user_id === state.userId;
+            if (empty) empty.classList.add('hidden');
+            if (container) {
+                container.classList.remove('hidden');
+                container.innerHTML = '';
                 
-                container.innerHTML += `
-                    <div class="card">
-                        <div class="card-header">
-                            <span class="card-rarity rarity-${getRarityClass(card.rarity)}">
-                                ${card.rarity}
-                            </span>
-                            <span class="card-id">#${item.id}</span>
-                        </div>
-                        <div class="card-body">
-                            <h3 class="card-title">${card.name}</h3>
-                            <p class="card-text">${card.fact}</p>
-                        </div>
-                        <div class="card-footer">
-                            <div>
-                                <div class="price">${formatNumber(item.price)} ₽</div>
-                                <div class="seller">${item.username || 'Аноним'}</div>
+                state.market.forEach(item => {
+                    const card = getCardInfo(item.card_id);
+                    const isOwn = item.user_id === state.userId;
+                    
+                    container.innerHTML += `
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-rarity rarity-${getRarityClass(card.rarity)}">
+                                    ${card.rarity}
+                                </span>
+                                <span class="card-id">#${item.id}</span>
                             </div>
-                            <button class="btn btn-primary btn-sm" onclick="buyCard(${item.id})" ${isOwn ? 'disabled' : ''}>
-                                ${isOwn ? 'Ваш' : 'Купить'}
-                            </button>
+                            <div class="card-body">
+                                <h3 class="card-title">${card.name}</h3>
+                                <p class="card-text">${card.fact}</p>
+                            </div>
+                            <div class="card-footer">
+                                <div>
+                                    <div class="price">${formatNumber(item.price)} ₽</div>
+                                    <div class="seller">${item.username || 'Аноним'}</div>
+                                </div>
+                                <button class="btn btn-primary btn-sm" onclick="buyCard(${item.id})" ${isOwn ? 'disabled' : ''}>
+                                    ${isOwn ? 'Ваш' : 'Купить'}
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            }
         }
 
         function renderCollection() {
+            console.log("Рендеринг коллекции...");
             const container = document.getElementById('collectionList');
+            const loading = document.getElementById('collectionLoading');
             const empty = document.getElementById('collectionEmpty');
             
-            if (!state.cards.length) {
-                empty.classList.remove('hidden');
-                container.classList.add('hidden');
+            // Скрываем спиннер
+            if (loading) loading.classList.add('hidden');
+            
+            if (!state.cards || state.cards.length === 0) {
+                if (empty) empty.classList.remove('hidden');
+                if (container) container.classList.add('hidden');
                 return;
             }
             
-            empty.classList.add('hidden');
-            container.classList.remove('hidden');
-            container.innerHTML = '';
-            
-            state.cards.forEach(card => {
-                if (card.count > 0) {
+            if (empty) empty.classList.add('hidden');
+            if (container) {
+                container.classList.remove('hidden');
+                container.innerHTML = '';
+                
+                // Фильтруем только карточки с count > 0
+                const validCards = state.cards.filter(card => card.count > 0);
+                
+                if (validCards.length === 0) {
+                    if (empty) empty.classList.remove('hidden');
+                    if (container) container.classList.add('hidden');
+                    return;
+                }
+                
+                validCards.forEach(card => {
                     container.innerHTML += `
                         <div class="card">
                             <div class="card-header">
@@ -874,72 +954,110 @@
                             </div>
                         </div>
                     `;
-                }
-            });
+                });
+            }
         }
 
         function renderSellForm() {
+            console.log("Рендеринг формы продажи...");
+            const loading = document.getElementById('sellLoading');
+            const form = document.getElementById('sellForm');
             const select = document.getElementById('sellCardSelect');
+            
+            if (loading) loading.classList.add('hidden');
+            if (form) form.classList.remove('hidden');
+            
             if (!select) return;
             
             select.innerHTML = '<option value="">Выберите карточку</option>';
             
-            state.cards.forEach(card => {
-                if (card.count > 0) {
-                    const option = document.createElement('option');
-                    option.value = card.id;
-                    option.textContent = `${card.name} (${card.count} шт.)`;
-                    select.appendChild(option);
-                }
+            if (!state.cards || state.cards.length === 0) {
+                const option = document.createElement('option');
+                option.value = "";
+                option.textContent = "У вас нет карточек для продажи";
+                option.disabled = true;
+                select.appendChild(option);
+                return;
+            }
+            
+            // Фильтруем только карточки с count > 0
+            const validCards = state.cards.filter(card => card.count > 0);
+            
+            if (validCards.length === 0) {
+                const option = document.createElement('option');
+                option.value = "";
+                option.textContent = "У вас нет карточек для продажи";
+                option.disabled = true;
+                select.appendChild(option);
+                return;
+            }
+            
+            validCards.forEach(card => {
+                const option = document.createElement('option');
+                option.value = card.id;
+                option.textContent = `${card.name} (${card.count} шт.)`;
+                select.appendChild(option);
             });
             
             updatePrice();
         }
 
         function renderListings() {
+            console.log("Рендеринг лотов...");
             const container = document.getElementById('myLotsList');
+            const loading = document.getElementById('lotsLoading');
             const empty = document.getElementById('lotsEmpty');
             
-            if (!state.listings.length) {
-                empty.classList.remove('hidden');
-                container.classList.add('hidden');
+            // Скрываем спиннер
+            if (loading) loading.classList.add('hidden');
+            
+            if (!state.listings || state.listings.length === 0) {
+                if (empty) empty.classList.remove('hidden');
+                if (container) container.classList.add('hidden');
                 return;
             }
             
-            empty.classList.add('hidden');
-            container.classList.remove('hidden');
-            container.innerHTML = '';
-            
-            state.listings.forEach(item => {
-                const card = getCardInfo(item.card_id);
+            if (empty) empty.classList.add('hidden');
+            if (container) {
+                container.classList.remove('hidden');
+                container.innerHTML = '';
                 
-                container.innerHTML += `
-                    <div class="card">
-                        <div class="card-header">
-                            <span class="card-rarity rarity-${getRarityClass(card.rarity)}">
-                                ${card.rarity}
-                            </span>
-                            <span class="card-id">#${item.id}</span>
+                state.listings.forEach(item => {
+                    const card = getCardInfo(item.card_id);
+                    
+                    container.innerHTML += `
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-rarity rarity-${getRarityClass(card.rarity)}">
+                                    ${card.rarity}
+                                </span>
+                                <span class="card-id">#${item.id}</span>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="card-title">${card.name}</h3>
+                                <p class="card-text">${card.fact}</p>
+                            </div>
+                            <div class="card-footer">
+                                <div class="price">${formatNumber(item.price)} ₽</div>
+                                <button class="btn btn-danger btn-sm" onclick="cancelListing(${item.id})">
+                                    Отменить
+                                </button>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <h3 class="card-title">${card.name}</h3>
-                            <p class="card-text">${card.fact}</p>
-                        </div>
-                        <div class="card-footer">
-                            <div class="price">${formatNumber(item.price)} ₽</div>
-                            <button class="btn btn-danger btn-sm" onclick="cancelListing(${item.id})">
-                                Отменить
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            }
         }
 
         // Actions
         function buyCard(listingId) {
+            console.log("Покупка карточки:", listingId);
+            
             const item = state.market.find(l => l.id === listingId);
-            if (!item) return;
+            if (!item) {
+                showNotification('Объявление не найдено', 'error');
+                return;
+            }
             
             const card = getCardInfo(item.card_id);
             state.currentListing = listingId;
@@ -949,22 +1067,27 @@
                 <h3 class="card-title mb-3">${card.name}</h3>
                 <p class="card-text mb-1">Цена: <strong>${formatNumber(item.price)} ₽</strong></p>
                 <p class="card-text">Продавец: ${item.username || 'Аноним'}</p>
+                <p class="card-text mt-2"><small>Ваш баланс: ${formatNumber(state.balance)} ₽</small></p>
             `;
             
             document.getElementById('buyModal').classList.add('active');
         }
 
         function cancelListing(listingId) {
+            console.log("Отмена лота:", listingId);
+            
             state.currentListing = listingId;
             document.getElementById('cancelModal').classList.add('active');
         }
 
         async function confirmBuy() {
+            console.log("Подтверждение покупки:", state.currentListing);
+            
             try {
                 const result = await sendToBot('buy', { listing_id: state.currentListing });
                 
                 if (result.success) {
-                    showNotification('Покупка успешна', 'success');
+                    showNotification('Покупка успешна!', 'success');
                     closeModal();
                     await loadData();
                     showTab('collection');
@@ -973,12 +1096,15 @@
                     closeModal();
                 }
             } catch (error) {
-                showNotification('Ошибка сети', 'error');
+                console.error("Ошибка покупки:", error);
+                showNotification('Ошибка сети: ' + error.message, 'error');
                 closeModal();
             }
         }
 
         async function confirmCancel() {
+            console.log("Подтверждение отмены:", state.currentListing);
+            
             try {
                 const result = await sendToBot('cancel', { listing_id: state.currentListing });
                 
@@ -992,7 +1118,8 @@
                     closeModal();
                 }
             } catch (error) {
-                showNotification('Ошибка сети', 'error');
+                console.error("Ошибка отмены:", error);
+                showNotification('Ошибка сети: ' + error.message, 'error');
                 closeModal();
             }
         }
@@ -1002,13 +1129,15 @@
             const price = document.getElementById('sellPrice').value;
             const btn = document.getElementById('sellBtn');
             
+            console.log("Продажа карточки:", { cardId, price });
+            
             if (!cardId) {
                 showNotification('Выберите карточку', 'error');
                 return;
             }
             
             if (!price || price < 10 || price > 10000) {
-                showNotification('Некорректная цена', 'error');
+                showNotification('Некорректная цена. Допустимо от 10 до 10000 коинов', 'error');
                 return;
             }
             
@@ -1021,8 +1150,10 @@
                     price: parseInt(price)
                 });
                 
+                console.log("Результат продажи:", result);
+                
                 if (result.success) {
-                    showNotification('Карточка выставлена на продажу', 'success');
+                    showNotification('Карточка выставлена на продажу!', 'success');
                     
                     // Reset form
                     document.getElementById('sellCardSelect').value = '';
@@ -1036,7 +1167,8 @@
                     showNotification(result.reason || 'Ошибка продажи', 'error');
                 }
             } catch (error) {
-                showNotification('Ошибка сети', 'error');
+                console.error("Ошибка продажи:", error);
+                showNotification('Ошибка сети: ' + error.message, 'error');
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Выставить на продажу';
@@ -1058,33 +1190,46 @@
 
         async function sendToBot(action, data = {}) {
             return new Promise((resolve, reject) => {
+                console.log("Отправка запроса боту:", { action, data });
+                
                 const request = {
                     action: action,
                     user_id: state.userId,
                     ...data
                 };
                 
+                // Отправляем данные через Telegram Web App
                 tg.sendData(JSON.stringify(request));
                 
-                tg.onEvent('webAppDataReceived', function handler(e) {
+                // Слушаем ответ от бота
+                const handler = (event) => {
+                    console.log("Получен ответ от бота:", event.data);
+                    
                     try {
-                        const response = JSON.parse(e.data);
+                        const response = JSON.parse(event.data);
                         tg.offEvent('webAppDataReceived', handler);
                         resolve(response);
                     } catch (error) {
+                        console.error("Ошибка парсинга ответа:", error);
                         tg.offEvent('webAppDataReceived', handler);
-                        reject(error);
+                        reject(new Error('Некорректный ответ от сервера'));
                     }
-                });
+                };
                 
+                tg.onEvent('webAppDataReceived', handler);
+                
+                // Таймаут на случай если ответ не пришел
                 setTimeout(() => {
-                    tg.offEvent('webAppDataReceived');
-                    reject(new Error('Таймаут'));
-                }, 10000);
+                    tg.offEvent('webAppDataReceived', handler);
+                    console.error("Таймаут ожидания ответа");
+                    reject(new Error('Таймаут ожидания ответа от сервера'));
+                }, 15000);
             });
         }
 
         function showNotification(message, type = 'info') {
+            console.log("Показ уведомления:", { message, type });
+            
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.innerHTML = `
@@ -1101,15 +1246,29 @@
         }
 
         function getCardInfo(cardId) {
-            // This should be replaced with real data from bot
+            // Временные данные для тестирования
             const cards = {
                 1: { name: "Етерниум пиздабол №1", rarity: "Редкая", fact: "Он пиздит, что живёт в Одессе." },
                 2: { name: "Етерниум пиздабол №2", rarity: "Сверхредкая", fact: "Пиздит, что у него 6 биткоинов." },
                 3: { name: "Етерниум пиздабол №3", rarity: "Эпическая", fact: "Пиздит, что он самый ахуенный человек на планете." },
-                4: { name: "Етерниум пиздабол №4", rarity: "Легендарная", fact: "Пиздит, что он фембой и все ему завидуют." }
+                4: { name: "Етерниум пиздабол №4", rarity: "Легендарная", fact: "Пиздит, что он фембой и все ему завидуют." },
+                5: { name: "Етерниум пиздабол №5", rarity: "Редкая", fact: "Пиздит, что каждый день прыгает с крыши." },
+                6: { name: "Етерниум пиздабол №6", rarity: "Сверхредкая", fact: "Пиздит, что кормит бездомных собак каждое утро." },
+                7: { name: "Етерниум пиздабол №7", rarity: "Эпическая", fact: "Пиздит, что умеет летать на метле." },
+                8: { name: "Етерниум пиздабол №8", rarity: "Легендарная", fact: "Пиздит, что его кот знает четыре языка." },
+                9: { name: "Етерниум пиздабол №9", rarity: "Редкая", fact: "Пиздит, что летает по всему миру." },
+                10: { name: "Етерниум пиздабол №10", rarity: "Сверхредкая", fact: "Пиздит, что он основатель криптовалюты." },
+                11: { name: "Етерниум пиздабол №11", rarity: "Редкая", fact: "Пиздит, что он дружит со всем чатом." },
+                12: { name: "Етерниум пиздабол №12", rarity: "Легендарная", fact: "Пиздит, что разбанил Зейна в пекоре." },
+                13: { name: "Етерниум пиздабол №13", rarity: "Эпическая", fact: "Пиздит, что застрелился в Дубае." },
+                14: { name: "Етерниум пиздабол №14", rarity: "Сверхредкая", fact: "Пиздит, что задонит робуксов всему чату." }
             };
             
-            return cards[cardId] || { name: "Неизвестно", rarity: "Редкая", fact: "Информация отсутствует" };
+            return cards[cardId] || { 
+                name: `Карточка #${cardId}`, 
+                rarity: "Редкая", 
+                fact: "Информация о карточке отсутствует" 
+            };
         }
 
         function getRarityClass(rarity) {
@@ -1132,6 +1291,17 @@
                 closeModal();
             }
         });
+        
+        // Добавляем обработчик для WebApp закрытия
+        tg.onEvent('viewportChanged', (e) => {
+            console.log("Viewport changed:", e);
+        });
+        
+        // Логируем все события для отладки
+        tg.onEvent('themeChanged', (e) => console.log("Theme changed:", e));
+        tg.onEvent('viewportChanged', (e) => console.log("Viewport changed:", e));
+        tg.onEvent('mainButtonClicked', (e) => console.log("Main button clicked:", e));
+        
     </script>
 </body>
 </html>
